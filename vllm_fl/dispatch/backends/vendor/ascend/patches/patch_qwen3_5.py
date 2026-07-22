@@ -44,7 +44,13 @@ class AscendQwen3NextAttention(Qwen3NextAttention):
     ):
         qkv, _ = self.qkv_proj(hidden_states)
 
-        if "qwen3_5" in self.config.model_type:
+        # Qwen3.5 family AND Qwen3-Next (35B-A3B, model_type="qwen3_next") use
+        # MRoPE; gate on mrope_section so non-MRoPE variants fall through to
+        # the generic split path below.
+        if (
+            "qwen3_5" in self.config.model_type
+            or self.config.model_type == "qwen3_next"
+        ) and getattr(self.rotary_emb, "mrope_section", None) is not None:
             cos_sin = self.rotary_emb.cos_sin_cache[positions]
             if cos_sin.device != qkv.device:
                 cos_sin = cos_sin.to(qkv.device)

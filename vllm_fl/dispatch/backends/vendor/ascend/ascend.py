@@ -146,3 +146,30 @@ class AscendBackend(Backend):
                 raise NotImplementedError("MLA with sparse attention is not implemented for Ascend yet.")
             return "vllm_fl.dispatch.backends.vendor.ascend.impl.attention.AscendMLABackend"
         return "vllm_fl.dispatch.backends.vendor.ascend.impl.attention.AscendAttentionBackend"
+
+    def topk_softmax(
+        self,
+        topk_weights: torch.Tensor,
+        topk_ids: torch.Tensor,
+        token_expert_indices: torch.Tensor,
+        gating_output: torch.Tensor,
+        renormalize: bool,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        """MoE gating (softmax + top-k) via the Ascend NPU native operator.
+
+        Drop-in for the FlagGems ``topk_softmax`` on Ascend, wrapping
+        ``torch.ops._C_ascend.moe_gating_top_k`` (mirrors vllm-ascend's
+        ``DeviceOperator.moe_gating_top_k``). ``topk_weights`` / ``topk_ids``
+        are pre-allocated by ``fused_topk`` and filled in place. Replaces the
+        FlagGems ``topk_gating_softmax_kernel`` (~26% of FL compute, ~60x
+        slower than the native ``MoeGatingTopK`` per 2026-07-21 profiling).
+        """
+        from .impl.gating import topk_softmax_ascend
+
+        return topk_softmax_ascend(
+            topk_weights,
+            topk_ids,
+            token_expert_indices,
+            gating_output,
+            renormalize,
+        )

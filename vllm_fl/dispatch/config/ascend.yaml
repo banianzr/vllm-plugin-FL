@@ -44,6 +44,12 @@ op_backends:
     - vendor
     - flagos
     - reference
+  # MoE gating (softmax + top-k): vendor first to use the NPU native
+  # MoeGatingTopK instead of the ~60x slower FlagGems topk_gating_softmax.
+  topk_softmax:
+    - vendor
+    - flagos
+    - reference
 
 # FlagOS operator blacklist
 # These operators will NOT use FlagOS implementation even if FlagOS is enabled.
